@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 # <HINT> Import any new Models here
-from .models import Course, Enrollment
+from .models import Course, Enrollment, Question, Choice, Submission
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
@@ -110,7 +110,28 @@ def enroll(request, course_id):
          # Collect the selected choices from exam form
          # Add each selected choice object to the submission object
          # Redirect to show_exam_result with the submission id
-#def submit(request, course_id):
+def submit(request, course_id):
+    user = request.user
+    course = Course.objects.get(id=course_id)
+
+    # Get the associated enrollment object
+    enrollment = Enrollment.objects.get(user=user, course=course)
+
+    # Create a new submission object referring to the enrollment
+    submission = Submission.objects.create(enrollment=enrollment)
+
+    # Collect the selected choices from the HTTP request
+    selected_choices = []
+    for question in course.question_set.all():
+        choice_id = request.POST.get(f"choice_{question.id}")
+        if choice_id:
+            choice = Choice.objects.get(id=int(choice_id))
+            submission.choices.add(choice)
+            selected_choices.append(choice)
+
+    # Redirect to the show_exam_result view with the submission id
+    return redirect('onlinecourse:show_exam_result', course_id=course_id, submission_id=submission.id)
+
 
 
 # <HINT> A example method to collect the selected choices from the exam form from the request object
@@ -130,7 +151,33 @@ def enroll(request, course_id):
         # Get the selected choice ids from the submission record
         # For each selected choice, check if it is a correct answer or not
         # Calculate the total score
-#def show_exam_result(request, course_id, submission_id):
+def show_exam_result(request, course_id, submission_id):
+    # Get the course and submission objects based on their IDs
+    course = get_object_or_404(Course, id=course_id)
+    submission = get_object_or_404(Submission, id=submission_id)
 
+    # Get the selected choice IDs from the submission record
+    selected_choice_ids = submission.choices.values_list('id', flat=True)
+
+    # Calculate the grade for each question
+    total_score = 0
+    question_results = []
+    for question in course.question_set.all():
+        is_correct = False
+        if question.correct_choice_id in selected_choice_ids:
+            is_correct = True
+            total_score += question.grade
+        question_results.append((question, is_correct))
+
+    # Add the course, selected choice IDs, and grade to the context
+    context = {
+        'course': course,
+        'selected_choice_ids': selected_choice_ids,
+        'grade': total_score,
+        'question_results': question_results
+    }
+
+    # Render the HTML page with the context
+    return render(request, 'onlinecourse/exam_result.html', context)
 
 
