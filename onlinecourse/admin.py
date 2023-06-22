@@ -28,6 +28,7 @@ class CourseAdmin(admin.ModelAdmin):
 
 class LessonAdmin(admin.ModelAdmin):
     list_display = ['title']
+    list_display = ['content'] 
     
 
 class QuestionAdmin(admin.ModelAdmin):
