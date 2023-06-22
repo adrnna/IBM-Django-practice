@@ -180,4 +180,3 @@ def show_exam_result(request, course_id, submission_id):
     # Render the HTML page with the context
     return render(request, 'onlinecourse/exam_result.html', context)
 
-
